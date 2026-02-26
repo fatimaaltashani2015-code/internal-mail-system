@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String
+  users     User[]
+  messages  Message[] @relation("AssignedDepartment")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  employeeId   String    @unique
+  name         String
+  password     String
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  role         String    // mail_dept | other_dept | admin
+  createdAt    DateTime  @default(now())
+}
+
+model Message {
+  id               Int       @id @default(autoincrement())
+  referenceNumber  String    @unique
+  senderName       String
+  messageDate      DateTime
+  subject          String
+  entryDate        DateTime  @default(now())
+  departmentId     Int
+  department       Department @relation("AssignedDepartment", fields: [departmentId], references: [id])
+  messageType      String    // normal | urgent
+  responseType     String    // for_info | for_action | for_reply
+  attachmentPath   String?
+  status           String    // unread | read_not_replied | replied
+  replyReference   String?
+  replyText        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Referential {
+  id               Int       @id @default(autoincrement())
+  referenceNumber  String    @unique
+  recipient        String
+  subject          String
+  senderName       String
+  createdAt        DateTime  @default(now())
+}
+
+model SystemSetting {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
