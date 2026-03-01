@@ -1,0 +1,80 @@
+================================================================================
+                    الخطأ الأخير وحلّه - نشر Vercel
+================================================================================
+
+--------------------------------------------------------------------------------
+الخطأ الذي ظهر (Build Error):
+--------------------------------------------------------------------------------
+
+14:31:44.525 Running build in Washington, D.C., USA (East) – iad1
+14:31:44.526 Build machine configuration: 2 cores, 8 GB
+14:31:44.654 Cloning github.com/fatimaaltashani2015-code/internal-mail-system (Branch: master, Commit: c5deb07)
+14:31:44.655 Previous build caches not available.
+14:31:44.934 Cloning completed: 280.000ms
+14:31:47.625 Running "vercel build"
+14:31:49.915 Vercel CLI 50.23.2
+14:32:05.756 Detected Next.js version: 14.2.15
+14:32:05.760 Running "npm run build"
+14:32:05.857 > internal-mail-system@1.0.0 build
+14:32:05.858 > next build
+14:32:22.818 Prisma has detected that this project was built on Vercel, which caches dependencies. This leads to an outdated Prisma Client because Prisma's auto-generation isn't triggered. To fix this, make sure to run the `prisma generate` command during the build process.
+14:32:22.820 Learn how: https://pris.ly/d/vercel-build
+14:32:22.821 PrismaClientInitializationError: Prisma has detected that this project was built on Vercel, which caches dependencies. This leads to an outdated Prisma Client because Prisma's auto-generation isn't triggered. To fix this, make sure to run the `prisma generate` command during the build process.
+14:32:22.821 Learn how: https://pris.ly/d/vercel-build
+14:32:22.821     at Ba (/vercel/path0/node_modules/@prisma/client/runtime/library.js:33:69)
+14:32:22.821     at new t (/vercel/path0/node_modules/@prisma/client/runtime/library.js:130:739)
+14:32:22.821     at 3154 (/vercel/path0/.next/server/app/api/auth/login/route.js:1:3000)
+14:32:22.829 > Build error occurred
+14:32:22.830 Error: Failed to collect page data for /api/auth/login
+14:32:22.830     at /vercel/path0/node_modules/next/dist/build/utils.js:1268:15
+14:32:22.858 Error: Command "npm run build" exited with 1
+
+--------------------------------------------------------------------------------
+سبب الخطأ:
+--------------------------------------------------------------------------------
+Prisma Client لا يُولّد تلقائياً على Vercel بسبب التخزين المؤقت.
+يجب تشغيل أمر prisma generate أثناء عملية البناء.
+
+--------------------------------------------------------------------------------
+الحل الذي تم تطبيقه:
+--------------------------------------------------------------------------------
+تم تعديل ملف package.json:
+
+1. تغيير سكربت build من:
+   "build": "next build"
+   إلى:
+   "build": "prisma generate && next build"
+
+2. إضافة سكربت postinstall:
+   "postinstall": "prisma generate"
+
+--------------------------------------------------------------------------------
+الخطوات النهائية المطلوبة:
+--------------------------------------------------------------------------------
+
+الخطوة 1: رفع التعديلات إلى GitHub
+-----------------------------------
+cd C:\Users\104750\Desktop\internal-mail-system
+git add package.json
+git commit -m "Fix Prisma generate for Vercel build"
+git push
+
+الخطوة 2: إعادة النشر على Vercel
+---------------------------------
+- إذا كان Vercel مربوطاً بـ GitHub، سيُعاد النشر تلقائياً بعد الـ push
+- أو من لوحة Vercel: Deployments → Redeploy على آخر عملية نشر
+
+الخطوة 3: التحقق من متغيرات البيئة في Vercel
+---------------------------------------------
+من Settings → Environment Variables تأكد من إضافة:
+
+| المتغير      | القيمة                                    |
+|--------------|-------------------------------------------|
+| DATABASE_URL | رابط PostgreSQL (من Neon أو Railway)      |
+| JWT_SECRET   | مفتاح سري قوي                             |
+
+بدون DATABASE_URL صحيح، قد يفشل التطبيق عند التشغيل حتى لو نجح البناء.
+
+--------------------------------------------------------------------------------
+تاريخ الحفظ: 2025
+================================================================================
