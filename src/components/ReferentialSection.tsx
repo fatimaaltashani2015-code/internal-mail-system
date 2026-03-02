@@ -2,12 +2,23 @@
 
 import { useState, useEffect } from "react";
 
+interface Referential {
+  id: number;
+  referenceNumber: string;
+  recipient: string;
+  subject: string;
+  senderName: string;
+  createdAt: string;
+}
+
 export default function ReferentialSection() {
   const [recipient, setRecipient] = useState("");
   const [subject, setSubject] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [senderName, setSenderName] = useState("");
   const [sequenceStart, setSequenceStart] = useState("");
+  const [referentialList, setReferentialList] = useState<Referential[]>([]);
+  const [listLoading, setListLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sequenceLoading, setSequenceLoading] = useState(false);
   const [error, setError] = useState("");
@@ -30,6 +41,19 @@ export default function ReferentialSection() {
       .then((r) => r.json())
       .then((data) => setSequenceStart(data?.referentialLastNumber ?? ""))
       .catch(() => setSequenceStart(""));
+  }, [role]);
+
+  function fetchReferentialList() {
+    setListLoading(true);
+    fetch("/api/referential?limit=100")
+      .then((r) => r.json())
+      .then((data) => setReferentialList(Array.isArray(data) ? data : []))
+      .catch(() => setReferentialList([]))
+      .finally(() => setListLoading(false));
+  }
+
+  useEffect(() => {
+    if (role === "mail_dept") fetchReferentialList();
   }, [role]);
 
   async function handleSaveSequence(e: React.FormEvent) {
@@ -78,6 +102,7 @@ export default function ReferentialSection() {
       setReferenceNumber(data.referenceNumber);
       setRecipient("");
       setSubject("");
+      if (role === "mail_dept") fetchReferentialList();
     } catch {
       setError("حدث خطأ في الاتصال");
     } finally {
@@ -182,6 +207,48 @@ export default function ReferentialSection() {
           </button>
         </div>
       </form>
+
+      {role === "mail_dept" && (
+        <div className="mt-6 pt-6 border-t border-slate-200">
+          <h4 className="text-base font-semibold text-slate-800 mb-3">
+            قائمة الإشاريات المدخلة
+          </h4>
+          {listLoading ? (
+            <p className="text-slate-500 py-4">جاري تحميل القائمة...</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-right">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="px-4 py-3 text-slate-700 font-medium">رقم الاشاري</th>
+                    <th className="px-4 py-3 text-slate-700 font-medium">المرسل إليه</th>
+                    <th className="px-4 py-3 text-slate-700 font-medium">المرسل</th>
+                    <th className="px-4 py-3 text-slate-700 font-medium">الموضوع</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referentialList.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                        لا توجد إشاريات مدخلة
+                      </td>
+                    </tr>
+                  ) : (
+                    referentialList.map((r) => (
+                      <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50">
+                        <td className="px-4 py-3 text-slate-700 font-medium">{r.referenceNumber}</td>
+                        <td className="px-4 py-3 text-slate-700">{r.recipient}</td>
+                        <td className="px-4 py-3 text-slate-700">{r.senderName}</td>
+                        <td className="px-4 py-3 text-slate-700">{r.subject}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

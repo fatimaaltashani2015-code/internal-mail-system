@@ -31,15 +31,18 @@ async function generateReferenceNumber(): Promise<string> {
   return String(nextNum);
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const limit = parseInt(searchParams.get("limit") || "50", 10) || 50;
+
   const list = await prisma.referential.findMany({
     orderBy: { createdAt: "desc" },
-    take: 10,
+    take: Math.min(limit, 200),
   });
   return NextResponse.json(list);
 }
