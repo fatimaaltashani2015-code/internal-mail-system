@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -8,7 +8,24 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then(async (r) => {
+        if (r.ok) return r.json();
+        if (r.status === 401) {
+          await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+        }
+        return null;
+      })
+      .then((user) => {
+        if (user?.id) router.replace("/dashboard");
+      })
+      .catch(() => {})
+      .finally(() => setChecking(false));
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,6 +49,14 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+        <p className="text-slate-600">جاري التحميل...</p>
+      </div>
+    );
   }
 
   return (

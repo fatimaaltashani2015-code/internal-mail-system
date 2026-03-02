@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { createToken } from "@/lib/auth";
 
@@ -33,12 +34,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const sessionId = randomUUID();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { sessionId },
+    });
+
     const token = await createToken({
       id: user.id,
       employeeId: user.employeeId,
       name: user.name,
       role: user.role,
       departmentId: user.departmentId ?? undefined,
+      sessionId,
     });
 
     const response = NextResponse.json({

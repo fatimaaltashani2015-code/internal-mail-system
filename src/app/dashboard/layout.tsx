@@ -11,10 +11,14 @@ function getNavItems(role: string) {
       { href: "/dashboard/outgoing", label: "بريد الصادر" },
       { href: "/dashboard/incoming", label: "البريد الوارد" },
       { href: "/dashboard/reports", label: "التقارير والإحصائيات" },
+      { href: "/dashboard/change-password", label: "تغيير كلمة المرور" },
     ];
   }
   if (role === "other_dept") {
-    return [{ href: "/dashboard/incoming", label: "البريد الوارد" }];
+    return [
+      { href: "/dashboard/incoming", label: "البريد الوارد" },
+      { href: "/dashboard/change-password", label: "تغيير كلمة المرور" },
+    ];
   }
   if (role === "admin") {
     return [

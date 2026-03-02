@@ -22,6 +22,7 @@ model User {
   departmentId Int?
   department   Department? @relation(fields: [departmentId], references: [id])
   role         String    // mail_dept | other_dept | admin
+  sessionId    String?   // لتطبيق جلسة واحدة فقط لكل مستخدم
   createdAt    DateTime  @default(now())
 }
 

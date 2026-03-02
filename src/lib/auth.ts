@@ -11,6 +11,7 @@ export interface UserPayload {
   name: string;
   role: string;
   departmentId?: number;
+  sessionId?: string;
 }
 
 export async function createToken(payload: UserPayload): Promise<string> {
@@ -33,7 +34,14 @@ export async function getSession(): Promise<UserPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth-token")?.value;
   if (!token) return null;
-  return verifyToken(token);
+  const payload = await verifyToken(token);
+  if (!payload) return null;
+  const { prisma } = await import("@/lib/prisma");
+  const user = await prisma.user.findUnique({
+    where: { id: payload.id },
+  });
+  if (!user || user.sessionId !== payload.sessionId) return null;
+  return payload;
 }
 
 export function getRoleLabel(role: string): string {
