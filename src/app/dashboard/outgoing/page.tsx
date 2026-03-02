@@ -64,15 +64,21 @@ export default function OutgoingMailPage() {
         body: formData,
       });
 
-      const data = await res.json();
+      let data: { error?: string };
+      try {
+        data = await res.json();
+      } catch {
+        setError(res.ok ? "حدث خطأ في الاتصال" : `خطأ من الخادم (${res.status})`);
+        return;
+      }
       if (!res.ok) {
         setError(data.error || "حدث خطأ");
         return;
       }
       router.push("/dashboard");
       router.refresh();
-    } catch {
-      setError("حدث خطأ في الاتصال");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "حدث خطأ في الاتصال");
     } finally {
       setLoading(false);
     }

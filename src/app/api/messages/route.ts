@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  try {
   const session = await getSession();
   if (!session || session.role !== "mail_dept") {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
@@ -94,17 +95,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // التحقق من أن القسم المختار تابع لإدارة موظف قسم البريد
+  // التحقق من صحة القسم وأنه تابع لإدارة موظف قسم البريد
+  const targetDept = await prisma.department.findUnique({
+    where: { id: parseInt(departmentId) },
+    select: { id: true, administrationId: true },
+  });
+  if (!targetDept) {
+    return NextResponse.json({ error: "القسم المختار غير موجود." }, { status: 400 });
+  }
   if (session.departmentId) {
     const userDept = await prisma.department.findUnique({
       where: { id: session.departmentId },
       select: { administrationId: true },
     });
-    const targetDept = await prisma.department.findUnique({
-      where: { id: parseInt(departmentId) },
-      select: { administrationId: true },
-    });
-    if (userDept && targetDept && userDept.administrationId !== targetDept.administrationId) {
+    if (userDept && userDept.administrationId !== targetDept.administrationId) {
       return NextResponse.json(
         { error: "لا يمكن تعيين الرسالة لقسم من إدارة أخرى." },
         { status: 403 }
@@ -127,16 +131,14 @@ export async function POST(request: NextRequest) {
   if (attachment && attachment.size > 0) {
     const bytes = await attachment.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const ext = attachment.name.split(".").pop() || "pdf";
-    attachmentPath = `/uploads/${uniqueId}.${ext}`;
+    const ext = (attachment.name && attachment.name.split(".").pop()) || "pdf";
+    const filename = `${uniqueId}.${ext}`;
+    attachmentPath = `/uploads/${filename}`;
     const fs = await import("fs/promises");
     const path = await import("path");
     const uploadDir = path.join(process.cwd(), "public", "uploads");
     await fs.mkdir(uploadDir, { recursive: true });
-    await fs.writeFile(
-      path.join(process.cwd(), "public", attachmentPath),
-      buffer
-    );
+    await fs.writeFile(path.join(uploadDir, filename), buffer);
   }
 
   const message = await prisma.message.create({
@@ -155,4 +157,11 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json(message);
+  } catch (err) {
+    console.error("POST /api/messages error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "حدث خطأ غير متوقع" },
+      { status: 500 }
+    );
+  }
 }
