@@ -34,7 +34,7 @@ export default function OutgoingMailPage() {
   }, [router]);
 
   useEffect(() => {
-    fetch("/api/departments")
+    fetch("/api/departments?forMailDept=1")
       .then((r) => r.json())
       .then(setDepartments)
       .catch(console.error);

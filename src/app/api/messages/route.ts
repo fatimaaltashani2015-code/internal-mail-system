@@ -14,20 +14,35 @@ export async function GET(request: NextRequest) {
 
   const where: Record<string, unknown> = {};
 
+  // موظف قسم البريد: عرض رسائل الإدارة التابع لها قسم البريد فقط
+  let administrationIdFilter: number | null = null;
+  if (session.role === "mail_dept" && session.departmentId) {
+    const userDept = await prisma.department.findUnique({
+      where: { id: session.departmentId },
+      select: { administrationId: true },
+    });
+    if (userDept) {
+      administrationIdFilter = userDept.administrationId;
+    }
+  }
+
   // البريد الوارد: عرض رسائل قسم المستخدم فقط
-  // متابعة البريد: موظف قسم البريد يرى جميع الرسائل (عند استخدام filter)
+  // متابعة البريد: موظف قسم البريد يرى رسائل إدارته فقط، موظف الأقسام يرى رسائل قسمه فقط
   if (departmentId) {
     where.departmentId = parseInt(departmentId);
   } else if (filter) {
-    // طلب متابعة البريد (filter موجود) - قسم البريد يرى الكل
     if (session.role === "other_dept" && session.departmentId) {
       where.departmentId = session.departmentId;
     }
   } else {
-    // طلب البريد الوارد (بدون filter) - كل مستخدم يرى رسائل قسمه فقط
     if (session.departmentId) {
       where.departmentId = session.departmentId;
     }
+  }
+
+  // فلترة موظف قسم البريد حسب الإدارة
+  if (administrationIdFilter != null) {
+    where.department = { administrationId: administrationIdFilter };
   }
   if (filter === "unread") {
     where.status = "unread";
@@ -77,6 +92,24 @@ export async function POST(request: NextRequest) {
       { error: "الصورة الضوئية (المسح الضوئي) مطلوبة. الرجاء إرفاق ملف." },
       { status: 400 }
     );
+  }
+
+  // التحقق من أن القسم المختار تابع لإدارة موظف قسم البريد
+  if (session.departmentId) {
+    const userDept = await prisma.department.findUnique({
+      where: { id: session.departmentId },
+      select: { administrationId: true },
+    });
+    const targetDept = await prisma.department.findUnique({
+      where: { id: parseInt(departmentId) },
+      select: { administrationId: true },
+    });
+    if (userDept && targetDept && userDept.administrationId !== targetDept.administrationId) {
+      return NextResponse.json(
+        { error: "لا يمكن تعيين الرسالة لقسم من إدارة أخرى." },
+        { status: 403 }
+      );
+    }
   }
 
   const existing = await prisma.message.findUnique({

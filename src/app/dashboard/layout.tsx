@@ -22,6 +22,7 @@ function getNavItems(role: string) {
   }
   if (role === "admin") {
     return [
+      { href: "/dashboard/administrations", label: "إدارة الإدارات" },
       { href: "/dashboard/departments", label: "إدارة الأقسام" },
       { href: "/dashboard/users", label: "إدارة المستخدمين" },
       { href: "/dashboard/reports", label: "التقارير والإحصائيات" },

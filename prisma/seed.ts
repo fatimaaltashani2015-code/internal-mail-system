@@ -29,20 +29,34 @@ function createAttachmentFile(filename: string, content?: Buffer): string {
 async function main() {
   const hashedPassword = await bcrypt.hash("admin123", 10);
 
-  // الأقسام
+  // الإدارات
+  let defaultAdmin = await prisma.administration.findFirst({ where: { name: "الإدارة العامة" } });
+  if (!defaultAdmin) {
+    defaultAdmin = await prisma.administration.create({
+      data: { name: "الإدارة العامة", note: "إدارة افتراضية" },
+    });
+  }
+
+  // الأقسام (مرتبطة بالإدارة)
   let mailDept = await prisma.department.findFirst({ where: { name: "قسم البريد" } });
   if (!mailDept) {
-    mailDept = await prisma.department.create({ data: { name: "قسم البريد" } });
+    mailDept = await prisma.department.create({
+      data: { name: "قسم البريد", administrationId: defaultAdmin.id },
+    });
   }
 
   let itDept = await prisma.department.findFirst({ where: { name: "قسم تقنية المعلومات" } });
   if (!itDept) {
-    itDept = await prisma.department.create({ data: { name: "قسم تقنية المعلومات" } });
+    itDept = await prisma.department.create({
+      data: { name: "قسم تقنية المعلومات", administrationId: defaultAdmin.id },
+    });
   }
 
   let hrDept = await prisma.department.findFirst({ where: { name: "قسم الموارد البشرية" } });
   if (!hrDept) {
-    hrDept = await prisma.department.create({ data: { name: "قسم الموارد البشرية" } });
+    hrDept = await prisma.department.create({
+      data: { name: "قسم الموارد البشرية", administrationId: defaultAdmin.id },
+    });
   }
 
   // المستخدمون

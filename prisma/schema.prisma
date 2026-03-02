@@ -7,11 +7,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Administration {
+  id          Int          @id @default(autoincrement())
+  name        String
+  note        String?
+  departments Department[]
+}
+
 model Department {
-  id        Int      @id @default(autoincrement())
-  name      String
-  users     User[]
-  messages  Message[] @relation("AssignedDepartment")
+  id              Int           @id @default(autoincrement())
+  name            String
+  administrationId Int
+  administration  Administration @relation(fields: [administrationId], references: [id])
+  users           User[]
+  messages        Message[]      @relation("AssignedDepartment")
 }
 
 model User {

@@ -25,6 +25,21 @@ export async function GET(
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
   }
 
+  // موظف قسم البريد: فقط رسائل إدارته
+  if (session.role === "mail_dept" && session.departmentId) {
+    const userDept = await prisma.department.findUnique({
+      where: { id: session.departmentId },
+      select: { administrationId: true },
+    });
+    const msgDept = await prisma.department.findUnique({
+      where: { id: message.departmentId },
+      select: { administrationId: true },
+    });
+    if (userDept && msgDept && userDept.administrationId !== msgDept.administrationId) {
+      return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
+    }
+  }
+
   if (session.role === "other_dept" && message.status === "unread") {
     // للعلم: فتح الرسالة يكفي فتنتقل مباشرة لجدول تم الرد
     const newStatus = message.responseType === "for_info" ? "replied" : "read_not_replied";
@@ -60,6 +75,21 @@ export async function PUT(
 
   if (session.role === "other_dept" && session.departmentId !== message.departmentId) {
     return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
+  }
+
+  // موظف قسم البريد: فقط رسائل إدارته
+  if (session.role === "mail_dept" && session.departmentId) {
+    const userDept = await prisma.department.findUnique({
+      where: { id: session.departmentId },
+      select: { administrationId: true },
+    });
+    const msgDept = await prisma.department.findUnique({
+      where: { id: message.departmentId },
+      select: { administrationId: true },
+    });
+    if (userDept && msgDept && userDept.administrationId !== msgDept.administrationId) {
+      return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
+    }
   }
 
   if (session.role === "mail_dept" || session.role === "other_dept") {

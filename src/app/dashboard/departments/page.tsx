@@ -3,17 +3,27 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+interface Administration {
+  id: number;
+  name: string;
+  note: string | null;
+}
+
 interface Department {
   id: number;
   name: string;
+  administrationId: number;
+  administration?: Administration;
 }
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [administrations, setAdministrations] = useState<Administration[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Department | null>(null);
   const [newName, setNewName] = useState("");
+  const [newAdminId, setNewAdminId] = useState<string>("");
   const [addMode, setAddMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -41,20 +51,27 @@ export default function DepartmentsPage() {
     loadDepartments();
   }, []);
 
+  useEffect(() => {
+    fetch("/api/administrations")
+      .then((r) => r.json())
+      .then(setAdministrations)
+      .catch(console.error);
+  }, []);
+
   const filtered = departments.filter((d) =>
     d.name.toLowerCase().includes(search.toLowerCase())
   );
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!newName.trim() || !newAdminId) return;
     setError("");
     setSaving(true);
     try {
       const res = await fetch("/api/departments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ name: newName.trim(), administrationId: newAdminId }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -62,6 +79,7 @@ export default function DepartmentsPage() {
         return;
       }
       setNewName("");
+      setNewAdminId("");
       setAddMode(false);
       loadDepartments();
     } catch {
@@ -80,7 +98,7 @@ export default function DepartmentsPage() {
       const res = await fetch(`/api/departments/${editing.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ name: newName.trim(), administrationId: newAdminId || editing.administrationId }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -100,6 +118,7 @@ export default function DepartmentsPage() {
   function startEdit(d: Department) {
     setEditing(d);
     setNewName(d.name);
+    setNewAdminId(String(d.administrationId));
     setAddMode(false);
   }
 
@@ -107,6 +126,7 @@ export default function DepartmentsPage() {
     setEditing(null);
     setAddMode(false);
     setNewName("");
+    setNewAdminId("");
   }
 
   return (
@@ -126,6 +146,7 @@ export default function DepartmentsPage() {
             setAddMode(true);
             setEditing(null);
             setNewName("");
+            setNewAdminId(administrations[0] ? String(administrations[0].id) : "");
           }}
           className="btn-primary"
         >
@@ -142,9 +163,9 @@ export default function DepartmentsPage() {
       {(addMode || editing) && (
         <form
           onSubmit={addMode ? handleAdd : handleEdit}
-          className="p-4 bg-slate-50 rounded-lg mb-6 flex gap-3 items-end"
+          className="p-4 bg-slate-50 rounded-lg mb-6 flex flex-wrap gap-3 items-end"
         >
-          <div className="flex-1">
+          <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-slate-700 mb-1">
               اسم القسم
             </label>
@@ -155,6 +176,24 @@ export default function DepartmentsPage() {
               className="input-field"
               required
             />
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              الإدارة التابعة لها
+            </label>
+            <select
+              value={newAdminId}
+              onChange={(e) => setNewAdminId(e.target.value)}
+              className="input-field"
+              required
+            >
+              <option value="">-- اختر الإدارة --</option>
+              {administrations.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
           </div>
           <button type="submit" disabled={saving} className="btn-primary">
             {saving ? "جاري الحفظ..." : addMode ? "إضافة" : "تعديل"}
@@ -174,6 +213,7 @@ export default function DepartmentsPage() {
               <tr>
                 <th className="px-4 py-3 text-slate-700 font-medium">رقم القسم</th>
                 <th className="px-4 py-3 text-slate-700 font-medium">اسم القسم</th>
+                <th className="px-4 py-3 text-slate-700 font-medium">الإدارة التابعة لها</th>
                 <th className="px-4 py-3 text-slate-700 font-medium">إجراءات</th>
               </tr>
             </thead>
@@ -182,6 +222,7 @@ export default function DepartmentsPage() {
                 <tr key={d.id} className="border-t border-slate-100">
                   <td className="px-4 py-3 text-slate-700">{d.id}</td>
                   <td className="px-4 py-3 text-slate-700">{d.name}</td>
+                  <td className="px-4 py-3 text-slate-700">{d.administration?.name ?? "-"}</td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => startEdit(d)}

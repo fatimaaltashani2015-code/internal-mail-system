@@ -12,7 +12,8 @@
     "db:push": "prisma db push",
 "db:seed": "npx tsx prisma/seed.ts",
     "db:reset-admin": "npx tsx prisma/reset-admin.ts",
-    "db:clear-messages": "npx tsx prisma/clear-messages.ts"
+    "db:clear-messages": "npx tsx prisma/clear-messages.ts",
+    "db:clear-all-except-admin": "npx tsx prisma/clear-all-except-admin.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
