@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // إحصائيات رسومية: إنجاز العمل للإدارة ونسبة الإنجاز لكل قسم
 export async function GET(request: NextRequest) {
   const session = await getSession();

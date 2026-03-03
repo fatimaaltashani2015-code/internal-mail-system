@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSession, getRoleLabel } from "@/lib/auth";
 import DashboardHeader from "@/components/DashboardHeader";
+
+export const dynamic = "force-dynamic";
 import NavLinks from "@/components/NavLinks";
 import ReferentialSection from "@/components/ReferentialSection";
 
