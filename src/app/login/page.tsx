@@ -36,6 +36,7 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeId, password }),
+        credentials: "include",
       });
       const data = await res.json();
       if (!res.ok) {

@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    const deptId = session.departmentId != null ? Number(session.departmentId) : null;
+    const rawDeptId = session.departmentId;
+    const deptId =
+      rawDeptId != null && !isNaN(Number(rawDeptId)) ? Number(rawDeptId) : null;
 
     // موظف قسم البريد: عرض رسائل الإدارة التابع لها قسم البريد فقط
     let departmentIdsInAdmin: number[] | null = null;
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
         if (departmentIdsInAdmin.length > 0) {
           where.departmentId = { in: departmentIdsInAdmin };
         } else {
-          where.departmentId = -1;
+          where.id = -1;
         }
       }
     } else {
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
         if (departmentIdsInAdmin.length > 0) {
           where.departmentId = { in: departmentIdsInAdmin };
         } else {
-          where.departmentId = -1;
+          where.id = -1;
         }
       }
     }

@@ -95,9 +95,9 @@ export default function MailTracking() {
     async function fetchData() {
       try {
         const [resU, resRnr, resR] = await Promise.all([
-          fetch("/api/messages?filter=unread"),
-          fetch("/api/messages?filter=read_not_replied"),
-          fetch("/api/messages?filter=replied"),
+          fetch("/api/messages?filter=unread", { credentials: "include" }),
+          fetch("/api/messages?filter=read_not_replied", { credentials: "include" }),
+          fetch("/api/messages?filter=replied", { credentials: "include" }),
         ]);
         const u = await resU.json();
         const rnr = await resRnr.json();
