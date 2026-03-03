@@ -22,6 +22,24 @@ interface Message {
   department?: { name: string };
 }
 
+interface Statistics {
+  overall: { replied: number; readNotReplied: number; unread: number; total: number };
+  byDepartment: Array<{
+    departmentId: number;
+    departmentName: string;
+    replied: number;
+    readNotReplied: number;
+    unread: number;
+    total: number;
+    percentageReplied: number;
+  }>;
+}
+
+interface Administration {
+  id: number;
+  name: string;
+}
+
 const STATUS_OPTIONS = [
   { value: "all", label: "الجميع" },
   { value: "unread", label: "لم يتم الفتح" },
@@ -43,11 +61,16 @@ export default function ReportsPage() {
   const [selectedUser, setSelectedUser] = useState<{ name: string; departmentName: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [reportLoading, setReportLoading] = useState(false);
+  const [statistics, setStatistics] = useState<Statistics | null>(null);
+  const [administrations, setAdministrations] = useState<Administration[]>([]);
+  const [selectedAdminId, setSelectedAdminId] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((user) => {
+        setUserRole(user.role || "");
         if (user.role !== "admin" && user.role !== "mail_dept") {
           router.replace("/dashboard");
         }
@@ -56,12 +79,36 @@ export default function ReportsPage() {
   }, [router]);
 
   useEffect(() => {
+    if (userRole === "admin") {
+      fetch("/api/administrations")
+        .then((r) => r.json())
+        .then((list) => {
+          setAdministrations(Array.isArray(list) ? list : []);
+          if (Array.isArray(list) && list.length > 0 && !selectedAdminId) {
+            setSelectedAdminId(String(list[0].id));
+          }
+        })
+        .catch(() => setAdministrations([]));
+    }
+  }, [userRole]);
+
+  useEffect(() => {
     fetch("/api/reports/users")
       .then((r) => r.json())
       .then(setUsers)
       .catch(() => setUsers([]))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const url = userRole === "admin" && selectedAdminId
+      ? `/api/reports/statistics?administrationId=${selectedAdminId}`
+      : "/api/reports/statistics";
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => setStatistics(data.error ? null : data))
+      .catch(() => setStatistics(null));
+  }, [userRole, selectedAdminId]);
 
   useEffect(() => {
     if (!selectedUserId) {
@@ -101,6 +148,126 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-slate-800">التقارير والإحصائيات</h2>
+
+      {/* اختيار الإدارة للأدمن */}
+      {userRole === "admin" && administrations.length > 0 && (
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <label className="block text-sm font-medium text-slate-700 mb-2">الإدارة</label>
+          <select
+            value={selectedAdminId}
+            onChange={(e) => setSelectedAdminId(e.target.value)}
+            className="input-field max-w-xs"
+          >
+            {administrations.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* رسم بياني: إنجاز العمل للإدارة بالكامل */}
+      <div className="bg-white rounded-xl p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">
+          إنجاز العمل للإدارة بالكامل
+        </h3>
+        {statistics ? (
+          <div className="space-y-4">
+            <div
+              className="flex items-center gap-2"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: "1rem",
+              }}
+            >
+              <div className="rounded-lg p-4 border border-emerald-200 bg-emerald-50">
+                <div className="text-2xl font-bold text-emerald-700">
+                  {statistics.overall.replied}
+                </div>
+                <div className="text-sm text-emerald-600">تم الرد عليها</div>
+              </div>
+              <div className="rounded-lg p-4 border border-amber-200 bg-amber-50">
+                <div className="text-2xl font-bold text-amber-700">
+                  {statistics.overall.readNotReplied}
+                </div>
+                <div className="text-sm text-amber-600">تم الفتح بدون رد</div>
+              </div>
+              <div className="rounded-lg p-4 border border-red-200 bg-red-50">
+                <div className="text-2xl font-bold text-red-700">
+                  {statistics.overall.unread}
+                </div>
+                <div className="text-sm text-red-600">لم يتم الفتح</div>
+              </div>
+            </div>
+            <div className="h-6 rounded-full overflow-hidden bg-slate-200 flex" dir="ltr">
+              {statistics.overall.total > 0 && (
+                <>
+                  <div
+                    className="bg-emerald-500 h-full transition-all"
+                    style={{
+                      width: `${(statistics.overall.replied / statistics.overall.total) * 100}%`,
+                    }}
+                  />
+                  <div
+                    className="bg-amber-500 h-full transition-all"
+                    style={{
+                      width: `${(statistics.overall.readNotReplied / statistics.overall.total) * 100}%`,
+                    }}
+                  />
+                  <div
+                    className="bg-red-500 h-full transition-all"
+                    style={{
+                      width: `${(statistics.overall.unread / statistics.overall.total) * 100}%`,
+                    }}
+                  />
+                </>
+              )}
+            </div>
+            <p className="text-sm text-slate-600">
+              الإجمالي: {statistics.overall.total} رسالة — نسبة الإنجاز:{" "}
+              {statistics.overall.total > 0
+                ? Math.round((statistics.overall.replied / statistics.overall.total) * 100)
+                : 0}
+              %
+            </p>
+          </div>
+        ) : (
+          <p className="text-slate-500 py-4">جاري تحميل الإحصائيات...</p>
+        )}
+      </div>
+
+      {/* رسم بياني: نسبة الإنجاز لكل قسم */}
+      <div className="bg-white rounded-xl p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">
+          نسبة الإنجاز لكل قسم
+        </h3>
+        {statistics && statistics.byDepartment.length > 0 ? (
+          <div className="space-y-4">
+            {statistics.byDepartment.map((dept) => (
+              <div key={dept.departmentId} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-slate-700">{dept.departmentName}</span>
+                  <span className="text-slate-600">
+                    {dept.replied}/{dept.total} ({dept.percentageReplied}%)
+                  </span>
+                </div>
+                <div className="h-8 rounded-lg overflow-hidden bg-slate-200">
+                  <div
+                    className="h-full bg-emerald-500 rounded-lg transition-all duration-500"
+                    style={{ width: `${dept.percentageReplied}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : statistics ? (
+          <p className="text-slate-500 py-4">لا توجد رسائل لعرض الإحصائيات</p>
+        ) : (
+          <p className="text-slate-500 py-4">جاري تحميل الإحصائيات...</p>
+        )}
+      </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">
