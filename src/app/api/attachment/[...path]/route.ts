@@ -33,14 +33,17 @@ export async function GET(
 
     if (process.env.BLOB_READ_WRITE_TOKEN) {
       const { get } = await import("@vercel/blob");
-      const blob = await get(`uploads/${filename}`, { access: "private" });
-      if (!blob) {
+      const result = await get(`uploads/${filename}`, { access: "private" });
+      if (!result) {
         return NextResponse.json({ error: "الملف غير موجود" }, { status: 404 });
       }
-      const buffer = Buffer.from(await blob.arrayBuffer());
-      return new NextResponse(buffer, {
+      const res = result as { stream?: ReadableStream; statusCode?: number; blob?: { contentType?: string } };
+      if (res.statusCode !== 200 || !res.stream) {
+        return NextResponse.json({ error: "الملف غير موجود" }, { status: 404 });
+      }
+      return new NextResponse(res.stream, {
         headers: {
-          "Content-Type": contentType,
+          "Content-Type": res.blob?.contentType || contentType,
           "Content-Disposition": `inline; filename="${path.basename(filename)}"`,
         },
       });
