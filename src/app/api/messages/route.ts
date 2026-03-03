@@ -157,12 +157,16 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
     const ext = (attachment.name && attachment.name.split(".").pop()) || "pdf";
     const filename = `${uniqueId}.${ext}`;
-    attachmentPath = `/uploads/${filename}`;
     const fs = await import("fs/promises");
     const path = await import("path");
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    // على Vercel/Serverless: استخدم /tmp لأن public غير قابل للكتابة
+    const isVercel = !!process.env.VERCEL;
+    const uploadDir = isVercel
+      ? path.join("/tmp", "uploads")
+      : path.join(process.cwd(), "public", "uploads");
     await fs.mkdir(uploadDir, { recursive: true });
     await fs.writeFile(path.join(uploadDir, filename), buffer);
+    attachmentPath = isVercel ? `/api/attachment/${filename}` : `/uploads/${filename}`;
   }
 
   const message = await prisma.message.create({
