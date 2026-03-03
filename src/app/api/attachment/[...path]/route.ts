@@ -35,11 +35,17 @@ export async function GET(
       const { get } = await import("@vercel/blob");
       const result = await get(`uploads/${filename}`, { access: "private" });
       if (!result) {
-        return NextResponse.json({ error: "الملف غير موجود" }, { status: 404 });
+        return new NextResponse(
+          `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>الملف غير متوفر</title></head><body style="font-family:sans-serif;padding:2rem;text-align:center"><p>الملف غير متوفر أو قد يكون من نسخة سابقة قبل تفعيل التخزين السحابي.</p></body></html>`,
+          { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } }
+        );
       }
       const res = result as { stream?: ReadableStream; statusCode?: number; blob?: { contentType?: string } };
       if (res.statusCode !== 200 || !res.stream) {
-        return NextResponse.json({ error: "الملف غير موجود" }, { status: 404 });
+        return new NextResponse(
+          `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>الملف غير متوفر</title></head><body style="font-family:sans-serif;padding:2rem;text-align:center"><p>الملف غير متوفر أو قد يكون من نسخة سابقة قبل تفعيل التخزين السحابي.</p></body></html>`,
+          { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } }
+        );
       }
       return new NextResponse(res.stream, {
         headers: {
@@ -62,7 +68,10 @@ export async function GET(
     });
   } catch (err) {
     if ((err as NodeJS.ErrnoException)?.code === "ENOENT") {
-      return NextResponse.json({ error: "الملف غير موجود" }, { status: 404 });
+      return new NextResponse(
+        `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>الملف غير متوفر</title></head><body style="font-family:sans-serif;padding:2rem;text-align:center"><p>الملف غير متوفر أو قد يكون من نسخة سابقة قبل تفعيل التخزين السحابي.</p></body></html>`,
+        { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } }
+      );
     }
     console.error("GET /api/attachment error:", err);
     return NextResponse.json({ error: "حدث خطأ" }, { status: 500 });

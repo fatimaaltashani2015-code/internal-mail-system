@@ -160,10 +160,19 @@ export async function POST(request: NextRequest) {
 
     if (process.env.BLOB_READ_WRITE_TOKEN) {
       const { put } = await import("@vercel/blob");
-      const blob = await put(`uploads/${filename}`, attachment, {
+      await put(`uploads/${filename}`, attachment, {
         access: "private",
         addRandomSuffix: false,
       });
+      attachmentPath = `/api/attachment/${filename}`;
+    } else if (process.env.VERCEL) {
+      const bytes = await attachment.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      const uploadDir = path.join("/tmp", "uploads");
+      await fs.mkdir(uploadDir, { recursive: true });
+      await fs.writeFile(path.join(uploadDir, filename), buffer);
       attachmentPath = `/api/attachment/${filename}`;
     } else {
       const bytes = await attachment.arrayBuffer();
