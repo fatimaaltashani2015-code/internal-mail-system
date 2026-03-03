@@ -5,6 +5,11 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  async redirects() {
+    return [
+      { source: '/favicon.ico', destination: '/icon.svg', permanent: false },
+    ];
+  },
 };
 
 module.exports = nextConfig;

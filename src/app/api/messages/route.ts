@@ -17,15 +17,21 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
+    const deptId = session.departmentId != null ? Number(session.departmentId) : null;
+
     // موظف قسم البريد: عرض رسائل الإدارة التابع لها قسم البريد فقط
-    let administrationIdFilter: number | null = null;
-    if (session.role === "mail_dept" && session.departmentId) {
+    let departmentIdsInAdmin: number[] | null = null;
+    if (session.role === "mail_dept" && deptId) {
       const userDept = await prisma.department.findUnique({
-        where: { id: session.departmentId },
+        where: { id: deptId },
         select: { administrationId: true },
       });
       if (userDept) {
-        administrationIdFilter = userDept.administrationId;
+        const depts = await prisma.department.findMany({
+          where: { administrationId: userDept.administrationId },
+          select: { id: true },
+        });
+        departmentIdsInAdmin = depts.map((d) => d.id);
       }
     }
 
@@ -34,18 +40,25 @@ export async function GET(request: NextRequest) {
     if (departmentId) {
       where.departmentId = parseInt(departmentId);
     } else if (filter) {
-      if (session.role === "other_dept" && session.departmentId != null) {
-        where.departmentId = session.departmentId;
+      if (session.role === "other_dept" && deptId != null) {
+        where.departmentId = deptId;
+      } else if (session.role === "mail_dept" && departmentIdsInAdmin != null) {
+        if (departmentIdsInAdmin.length > 0) {
+          where.departmentId = { in: departmentIdsInAdmin };
+        } else {
+          where.departmentId = -1;
+        }
       }
     } else {
-      if (session.departmentId != null) {
-        where.departmentId = session.departmentId;
+      if (deptId != null) {
+        where.departmentId = deptId;
+      } else if (session.role === "mail_dept" && departmentIdsInAdmin != null) {
+        if (departmentIdsInAdmin.length > 0) {
+          where.departmentId = { in: departmentIdsInAdmin };
+        } else {
+          where.departmentId = -1;
+        }
       }
-    }
-
-    // فلترة موظف قسم البريد حسب الإدارة
-    if (administrationIdFilter != null) {
-      where.department = { administrationId: administrationIdFilter };
     }
     if (filter === "unread") {
       where.status = "unread";
