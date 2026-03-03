@@ -3,65 +3,74 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-  }
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    }
 
-  const { searchParams } = new URL(request.url);
-  const filter = searchParams.get("filter");
-  const departmentId = searchParams.get("departmentId");
+    const { searchParams } = new URL(request.url);
+    const filter = searchParams.get("filter");
+    const departmentId = searchParams.get("departmentId");
 
-  const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {};
 
-  // موظف قسم البريد: عرض رسائل الإدارة التابع لها قسم البريد فقط
-  let administrationIdFilter: number | null = null;
-  if (session.role === "mail_dept" && session.departmentId) {
-    const userDept = await prisma.department.findUnique({
-      where: { id: session.departmentId },
-      select: { administrationId: true },
+    // موظف قسم البريد: عرض رسائل الإدارة التابع لها قسم البريد فقط
+    let administrationIdFilter: number | null = null;
+    if (session.role === "mail_dept" && session.departmentId) {
+      const userDept = await prisma.department.findUnique({
+        where: { id: session.departmentId },
+        select: { administrationId: true },
+      });
+      if (userDept) {
+        administrationIdFilter = userDept.administrationId;
+      }
+    }
+
+    // البريد الوارد: عرض رسائل قسم المستخدم فقط
+    // متابعة البريد: موظف قسم البريد يرى رسائل إدارته فقط، موظف الأقسام يرى رسائل قسمه فقط
+    if (departmentId) {
+      where.departmentId = parseInt(departmentId);
+    } else if (filter) {
+      if (session.role === "other_dept" && session.departmentId != null) {
+        where.departmentId = session.departmentId;
+      }
+    } else {
+      if (session.departmentId != null) {
+        where.departmentId = session.departmentId;
+      }
+    }
+
+    // فلترة موظف قسم البريد حسب الإدارة
+    if (administrationIdFilter != null) {
+      where.department = { administrationId: administrationIdFilter };
+    }
+    if (filter === "unread") {
+      where.status = "unread";
+    } else if (filter === "read_not_replied") {
+      where.status = "read_not_replied";
+    } else if (filter === "replied") {
+      where.status = "replied";
+    }
+
+    // المدير يرى الكل إذا لم يُحدد قسم أو إدارة
+    const messages = await prisma.message.findMany({
+      where,
+      include: { department: true },
+      orderBy: [
+        { messageType: "desc" }, // مستعجل أولاً (urgent قبل normal)
+        { entryDate: "desc" }, // تنازلي من الأحدث للأقدم
+      ],
     });
-    if (userDept) {
-      administrationIdFilter = userDept.administrationId;
-    }
-  }
 
-  // البريد الوارد: عرض رسائل قسم المستخدم فقط
-  // متابعة البريد: موظف قسم البريد يرى رسائل إدارته فقط، موظف الأقسام يرى رسائل قسمه فقط
-  if (departmentId) {
-    where.departmentId = parseInt(departmentId);
-  } else if (filter) {
-    if (session.role === "other_dept" && session.departmentId) {
-      where.departmentId = session.departmentId;
-    }
-  } else {
-    if (session.departmentId) {
-      where.departmentId = session.departmentId;
-    }
+    return NextResponse.json(messages);
+  } catch (err) {
+    console.error("GET /api/messages error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "حدث خطأ غير متوقع" },
+      { status: 500 }
+    );
   }
-
-  // فلترة موظف قسم البريد حسب الإدارة
-  if (administrationIdFilter != null) {
-    where.department = { administrationId: administrationIdFilter };
-  }
-  if (filter === "unread") {
-    where.status = "unread";
-  } else if (filter === "read_not_replied") {
-    where.status = "read_not_replied";
-  } else if (filter === "replied") {
-    where.status = "replied";
-  }
-
-  const messages = await prisma.message.findMany({
-    where,
-    include: { department: true },
-    orderBy: [
-      { messageType: "desc" }, // مستعجل أولاً (urgent قبل normal)
-      { entryDate: "desc" }, // تنازلي من الأحدث للأقدم
-    ],
-  });
-
-  return NextResponse.json(messages);
 }
 
 export async function POST(request: NextRequest) {

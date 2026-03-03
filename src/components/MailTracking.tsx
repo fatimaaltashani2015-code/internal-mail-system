@@ -94,16 +94,21 @@ export default function MailTracking() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [u, rnr, r] = await Promise.all([
-          fetch("/api/messages?filter=unread").then((x) => x.json()),
-          fetch("/api/messages?filter=read_not_replied").then((x) => x.json()),
-          fetch("/api/messages?filter=replied").then((x) => x.json()),
+        const [resU, resRnr, resR] = await Promise.all([
+          fetch("/api/messages?filter=unread"),
+          fetch("/api/messages?filter=read_not_replied"),
+          fetch("/api/messages?filter=replied"),
         ]);
-        setUnread(u);
-        setReadNotReplied(rnr);
-        setReplied(r);
+        const u = await resU.json();
+        const rnr = await resRnr.json();
+        const r = await resR.json();
+        setUnread(Array.isArray(u) ? u : []);
+        setReadNotReplied(Array.isArray(rnr) ? rnr : []);
+        setReplied(Array.isArray(r) ? r : []);
       } catch {
-        console.error("Failed to fetch");
+        setUnread([]);
+        setReadNotReplied([]);
+        setReplied([]);
       } finally {
         setLoading(false);
       }
