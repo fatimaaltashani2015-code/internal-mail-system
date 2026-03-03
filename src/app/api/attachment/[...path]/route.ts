@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import fs from "fs/promises";
 import path from "path";
+import fs from "fs/promises";
 
 export const dynamic = "force-dynamic";
 
-// خدمة المرفقات المخزنة في /tmp (للاستضافة على Vercel)
+const MIME: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+};
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -22,18 +28,29 @@ export async function GET(
       return NextResponse.json({ error: "غير صالح" }, { status: 400 });
     }
 
-    const filePath = path.join("/tmp", "uploads", filename);
-    const buffer = await fs.readFile(filePath);
-
     const ext = path.extname(filename).toLowerCase();
-    const mime: Record<string, string> = {
-      ".pdf": "application/pdf",
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".png": "image/png",
-    };
-    const contentType = mime[ext] || "application/octet-stream";
+    const contentType = MIME[ext] || "application/octet-stream";
 
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const { get } = await import("@vercel/blob");
+      const blob = await get(`uploads/${filename}`, { access: "private" });
+      if (!blob) {
+        return NextResponse.json({ error: "الملف غير موجود" }, { status: 404 });
+      }
+      const buffer = Buffer.from(await blob.arrayBuffer());
+      return new NextResponse(buffer, {
+        headers: {
+          "Content-Type": contentType,
+          "Content-Disposition": `inline; filename="${path.basename(filename)}"`,
+        },
+      });
+    }
+
+    const isVercel = !!process.env.VERCEL;
+    const filePath = isVercel
+      ? path.join("/tmp", "uploads", filename)
+      : path.join(process.cwd(), "public", "uploads", filename);
+    const buffer = await fs.readFile(filePath);
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": contentType,

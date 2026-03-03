@@ -10,7 +10,7 @@
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-"db:seed": "npx tsx prisma/seed.ts",
+    "db:seed": "npx tsx prisma/seed.ts",
     "db:reset-admin": "npx tsx prisma/reset-admin.ts",
     "db:clear-messages": "npx tsx prisma/clear-messages.ts",
     "db:clear-all-except-admin": "npx tsx prisma/clear-all-except-admin.ts"
@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@vercel/blob": "^2.3.0",
     "bcryptjs": "^2.4.3",
     "jose": "^5.9.6",
     "lucide-react": "^0.460.0",

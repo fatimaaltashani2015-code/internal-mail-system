@@ -153,20 +153,26 @@ export async function POST(request: NextRequest) {
   const uniqueId = `${referenceNumber}-${Date.now()}`;
   let attachmentPath: string | null = null;
   if (attachment && attachment.size > 0) {
-    const bytes = await attachment.arrayBuffer();
-    const buffer = Buffer.from(bytes);
     const ext = (attachment.name && attachment.name.split(".").pop()) || "pdf";
     const filename = `${uniqueId}.${ext}`;
-    const fs = await import("fs/promises");
-    const path = await import("path");
-    // على Vercel/Serverless: استخدم /tmp لأن public غير قابل للكتابة
-    const isVercel = !!process.env.VERCEL;
-    const uploadDir = isVercel
-      ? path.join("/tmp", "uploads")
-      : path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadDir, { recursive: true });
-    await fs.writeFile(path.join(uploadDir, filename), buffer);
-    attachmentPath = isVercel ? `/api/attachment/${filename}` : `/uploads/${filename}`;
+
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const { put } = await import("@vercel/blob");
+      const blob = await put(`uploads/${filename}`, attachment, {
+        access: "private",
+        addRandomSuffix: false,
+      });
+      attachmentPath = `/api/attachment/${filename}`;
+    } else {
+      const bytes = await attachment.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      const uploadDir = path.join(process.cwd(), "public", "uploads");
+      await fs.mkdir(uploadDir, { recursive: true });
+      await fs.writeFile(path.join(uploadDir, filename), buffer);
+      attachmentPath = `/uploads/${filename}`;
+    }
   }
 
   const message = await prisma.message.create({

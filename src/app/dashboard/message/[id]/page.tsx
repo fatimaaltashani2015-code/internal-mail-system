@@ -125,7 +125,7 @@ export default function ViewMessagePage() {
           </label>
           {message.attachmentPath ? (
             <a
-              href={message.attachmentPath}
+              href={message.attachmentPath.startsWith("/uploads/") ? `/api/attachment/${message.attachmentPath.split("/").pop()}` : message.attachmentPath}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-primary inline-block text-sm py-2"
