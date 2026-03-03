@@ -167,98 +167,93 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* رسم بياني: إنجاز العمل للإدارة بالكامل */}
+      {/* رسم بياني دائري: إنجاز العمل للإدارة بالكامل */}
       <div className="bg-white rounded-xl p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">
           إنجاز العمل للإدارة بالكامل
         </h3>
         {statistics ? (
-          <div className="space-y-4">
-            <div
-              className="flex items-center gap-2"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: "1rem",
-              }}
-            >
-              <div className="rounded-lg p-4 border border-emerald-200 bg-emerald-50">
-                <div className="text-2xl font-bold text-emerald-700">
-                  {statistics.overall.replied}
+          <div className="flex flex-wrap items-center gap-8">
+            <div className="flex flex-col items-center">
+              <div
+                className="w-48 h-48 rounded-full relative flex items-center justify-center"
+                style={{
+                  background:
+                    statistics.overall.total > 0
+                      ? `conic-gradient(
+                          #10b981 0deg ${(statistics.overall.replied / statistics.overall.total) * 360}deg,
+                          #f59e0b ${(statistics.overall.replied / statistics.overall.total) * 360}deg ${((statistics.overall.replied + statistics.overall.readNotReplied) / statistics.overall.total) * 360}deg,
+                          #ef4444 ${((statistics.overall.replied + statistics.overall.readNotReplied) / statistics.overall.total) * 360}deg 360deg
+                        )`
+                      : "conic-gradient(#e2e8f0 0deg 360deg)",
+                }}
+              >
+                <div className="w-32 h-32 rounded-full bg-white flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-slate-800">
+                    {statistics.overall.total > 0
+                      ? Math.round((statistics.overall.replied / statistics.overall.total) * 100)
+                      : 0}
+                    %
+                  </span>
+                  <span className="text-xs text-slate-500">نسبة الإنجاز</span>
                 </div>
-                <div className="text-sm text-emerald-600">تم الرد عليها</div>
               </div>
-              <div className="rounded-lg p-4 border border-amber-200 bg-amber-50">
-                <div className="text-2xl font-bold text-amber-700">
-                  {statistics.overall.readNotReplied}
-                </div>
-                <div className="text-sm text-amber-600">تم الفتح بدون رد</div>
+              <p className="text-sm text-slate-600 mt-2">الإجمالي: {statistics.overall.total} رسالة</p>
+            </div>
+            <div className="flex-1 min-w-[200px] space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-4 h-4 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-slate-700">تم الرد عليها: {statistics.overall.replied}</span>
               </div>
-              <div className="rounded-lg p-4 border border-red-200 bg-red-50">
-                <div className="text-2xl font-bold text-red-700">
-                  {statistics.overall.unread}
-                </div>
-                <div className="text-sm text-red-600">لم يتم الفتح</div>
+              <div className="flex items-center gap-3">
+                <span className="w-4 h-4 rounded-full bg-amber-500 shrink-0" />
+                <span className="text-slate-700">تم الفتح بدون رد: {statistics.overall.readNotReplied}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="w-4 h-4 rounded-full bg-red-500 shrink-0" />
+                <span className="text-slate-700">لم يتم الفتح: {statistics.overall.unread}</span>
               </div>
             </div>
-            <div className="h-6 rounded-full overflow-hidden bg-slate-200 flex" dir="ltr">
-              {statistics.overall.total > 0 && (
-                <>
-                  <div
-                    className="bg-emerald-500 h-full transition-all"
-                    style={{
-                      width: `${(statistics.overall.replied / statistics.overall.total) * 100}%`,
-                    }}
-                  />
-                  <div
-                    className="bg-amber-500 h-full transition-all"
-                    style={{
-                      width: `${(statistics.overall.readNotReplied / statistics.overall.total) * 100}%`,
-                    }}
-                  />
-                  <div
-                    className="bg-red-500 h-full transition-all"
-                    style={{
-                      width: `${(statistics.overall.unread / statistics.overall.total) * 100}%`,
-                    }}
-                  />
-                </>
-              )}
-            </div>
-            <p className="text-sm text-slate-600">
-              الإجمالي: {statistics.overall.total} رسالة — نسبة الإنجاز:{" "}
-              {statistics.overall.total > 0
-                ? Math.round((statistics.overall.replied / statistics.overall.total) * 100)
-                : 0}
-              %
-            </p>
           </div>
         ) : (
           <p className="text-slate-500 py-4">جاري تحميل الإحصائيات...</p>
         )}
       </div>
 
-      {/* رسم بياني: نسبة الإنجاز لكل قسم */}
+      {/* رسوم بيانية دائرية: نسبة الإنجاز لكل قسم */}
       <div className="bg-white rounded-xl p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">
           نسبة الإنجاز لكل قسم
         </h3>
         {statistics && statistics.byDepartment.length > 0 ? (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {statistics.byDepartment.map((dept) => (
-              <div key={dept.departmentId} className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-slate-700">{dept.departmentName}</span>
-                  <span className="text-slate-600">
-                    {dept.replied}/{dept.total} ({dept.percentageReplied}%)
-                  </span>
+              <div
+                key={dept.departmentId}
+                className="flex flex-col items-center p-4 rounded-xl border border-slate-200 bg-slate-50/50"
+              >
+                <div
+                  className="w-28 h-28 rounded-full relative flex items-center justify-center shrink-0"
+                  style={{
+                    background:
+                      dept.total > 0
+                        ? `conic-gradient(
+                            #10b981 0deg ${(dept.percentageReplied / 100) * 360}deg,
+                            #e2e8f0 ${(dept.percentageReplied / 100) * 360}deg 360deg
+                          )`
+                        : "conic-gradient(#e2e8f0 0deg 360deg)",
+                  }}
+                >
+                  <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center">
+                    <span className="text-lg font-bold text-slate-800">
+                      {dept.percentageReplied}%
+                    </span>
+                  </div>
                 </div>
-                <div className="h-8 rounded-lg overflow-hidden bg-slate-200">
-                  <div
-                    className="h-full bg-emerald-500 rounded-lg transition-all duration-500"
-                    style={{ width: `${dept.percentageReplied}%` }}
-                  />
-                </div>
+                <p className="font-medium text-slate-700 mt-3 text-center">{dept.departmentName}</p>
+                <p className="text-sm text-slate-500">
+                  {dept.replied} / {dept.total} تم الرد
+                </p>
               </div>
             ))}
           </div>
