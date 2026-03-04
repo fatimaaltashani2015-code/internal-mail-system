@@ -65,10 +65,22 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const { replyReference, replyText } = await request.json();
+  const body = await request.json();
+  const {
+    replyReference,
+    replyText,
+    referenceNumber,
+    senderName,
+    messageDate,
+    subject,
+    departmentId,
+    messageType,
+    responseType,
+  } = body;
 
   const message = await prisma.message.findUnique({
     where: { id: parseInt(id) },
+    include: { department: true },
   });
 
   if (!message) {
@@ -94,18 +106,111 @@ export async function PUT(
     }
   }
 
-  if (session.role === "mail_dept" || session.role === "other_dept") {
-    const updated = await prisma.message.update({
-      where: { id: parseInt(id) },
-      data: {
-        replyReference: replyReference?.trim() || null,
-        replyText: replyText?.trim() || null,
-        status: replyText?.trim() ? "replied" : "read_not_replied",
-      },
-      include: { department: true },
-    });
-    return NextResponse.json(updated);
+  const updateData: Record<string, unknown> = {};
+
+  // حقلا الرد: متاح لـ other_dept و mail_dept
+  if (replyReference !== undefined && replyText !== undefined) {
+    updateData.replyReference = replyReference?.trim() || null;
+    updateData.replyText = replyText?.trim() || null;
+    updateData.status = replyText?.trim() ? "replied" : "read_not_replied";
   }
 
-  return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
+  // بيانات الرسالة: فقط لموظفي قسم البريد
+  if (session.role === "mail_dept") {
+    if (referenceNumber !== undefined) {
+      const ref = referenceNumber?.trim();
+      if (ref) {
+        const existing = await prisma.message.findFirst({
+          where: {
+            referenceNumber: ref,
+            id: { not: parseInt(id) },
+          },
+        });
+        if (existing) {
+          return NextResponse.json(
+            { error: "رقم إشاري الرسالة مسجل مسبقاً. الرجاء استخدام رقم آخر." },
+            { status: 400 }
+          );
+        }
+        updateData.referenceNumber = ref;
+      }
+    }
+    if (senderName !== undefined) updateData.senderName = String(senderName);
+    if (messageDate !== undefined) updateData.messageDate = new Date(messageDate);
+    if (subject !== undefined) updateData.subject = String(subject);
+    if (messageType !== undefined) updateData.messageType = messageType;
+    if (responseType !== undefined) updateData.responseType = responseType;
+    if (departmentId !== undefined) {
+      const deptId = parseInt(departmentId);
+      if (!isNaN(deptId)) {
+        const targetDept = await prisma.department.findUnique({
+          where: { id: deptId },
+          select: { administrationId: true },
+        });
+        if (!targetDept) {
+          return NextResponse.json({ error: "القسم المختار غير موجود." }, { status: 400 });
+        }
+        if (session.departmentId) {
+          const userDept = await prisma.department.findUnique({
+            where: { id: session.departmentId },
+            select: { administrationId: true },
+          });
+          if (userDept && userDept.administrationId !== targetDept.administrationId) {
+            return NextResponse.json(
+              { error: "لا يمكن تعيين الرسالة لقسم من إدارة أخرى." },
+              { status: 403 }
+            );
+          }
+        }
+        updateData.departmentId = deptId;
+      }
+    }
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return NextResponse.json(message);
+  }
+
+  const updated = await prisma.message.update({
+    where: { id: parseInt(id) },
+    data: updateData as Parameters<typeof prisma.message.update>[0]["data"],
+    include: { department: true },
+  });
+  return NextResponse.json(updated);
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session || session.role !== "mail_dept") {
+    return NextResponse.json({ error: "غير مصرح - قسم البريد فقط" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const message = await prisma.message.findUnique({
+    where: { id: parseInt(id) },
+  });
+
+  if (!message) {
+    return NextResponse.json({ error: "الرسالة غير موجودة" }, { status: 404 });
+  }
+
+  if (session.departmentId) {
+    const userDept = await prisma.department.findUnique({
+      where: { id: session.departmentId },
+      select: { administrationId: true },
+    });
+    const msgDept = await prisma.department.findUnique({
+      where: { id: message.departmentId },
+      select: { administrationId: true },
+    });
+    if (userDept && msgDept && userDept.administrationId !== msgDept.administrationId) {
+      return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
+    }
+  }
+
+  await prisma.message.delete({ where: { id: parseInt(id) } });
+  return NextResponse.json({ success: true });
 }

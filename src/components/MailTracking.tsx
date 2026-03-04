@@ -17,11 +17,28 @@ function MessageTable({
   title,
   messages,
   isOld,
+  onDelete,
+  onRefresh,
 }: {
   title: string;
   messages: Message[];
   isOld: (d: string) => boolean;
+  onDelete: (id: number) => Promise<void>;
+  onRefresh: () => void;
 }) {
+  const [deleting, setDeleting] = useState<number | null>(null);
+
+  async function handleDelete(id: number) {
+    if (!confirm("هل أنت متأكد من حذف هذه الرسالة؟")) return;
+    setDeleting(id);
+    try {
+      await onDelete(id);
+      onRefresh();
+    } finally {
+      setDeleting(null);
+    }
+  }
+
   return (
     <div className="mb-8">
       <h3 className="text-lg font-semibold text-slate-800 mb-3">{title}</h3>
@@ -35,12 +52,13 @@ function MessageTable({
               <th className="px-4 py-3 text-slate-700 font-medium">حالة الرد (مستعجل - عادي)</th>
               <th className="px-4 py-3 text-slate-700 font-medium">تاريخ الإدخال</th>
               <th className="px-4 py-3 text-slate-700 font-medium">القسم المختص</th>
+              <th className="px-4 py-3 text-slate-700 font-medium">إجراءات</th>
             </tr>
           </thead>
           <tbody>
             {messages.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   لا توجد رسائل
                 </td>
               </tr>
@@ -66,6 +84,16 @@ function MessageTable({
                     {new Date(m.entryDate).toLocaleDateString("ar-SA")}
                   </td>
                   <td className="px-4 py-3 text-slate-700">{m.department.name}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(m.id)}
+                      disabled={deleting === m.id}
+                      className="text-red-600 hover:text-red-800 hover:underline text-sm disabled:opacity-50"
+                    >
+                      {deleting === m.id ? "جاري..." : "حذف"}
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -91,30 +119,42 @@ export default function MailTracking() {
   const [replied, setReplied] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [resU, resRnr, resR] = await Promise.all([
-          fetch("/api/messages?filter=unread", { credentials: "include" }),
-          fetch("/api/messages?filter=read_not_replied", { credentials: "include" }),
-          fetch("/api/messages?filter=replied", { credentials: "include" }),
-        ]);
-        const u = await resU.json();
-        const rnr = await resRnr.json();
-        const r = await resR.json();
-        setUnread(Array.isArray(u) ? u : []);
-        setReadNotReplied(Array.isArray(rnr) ? rnr : []);
-        setReplied(Array.isArray(r) ? r : []);
-      } catch {
-        setUnread([]);
-        setReadNotReplied([]);
-        setReplied([]);
-      } finally {
-        setLoading(false);
-      }
+  async function fetchData() {
+    try {
+      const [resU, resRnr, resR] = await Promise.all([
+        fetch("/api/messages?filter=unread", { credentials: "include" }),
+        fetch("/api/messages?filter=read_not_replied", { credentials: "include" }),
+        fetch("/api/messages?filter=replied", { credentials: "include" }),
+      ]);
+      const u = await resU.json();
+      const rnr = await resRnr.json();
+      const r = await resR.json();
+      setUnread(Array.isArray(u) ? u : []);
+      setReadNotReplied(Array.isArray(rnr) ? rnr : []);
+      setReplied(Array.isArray(r) ? r : []);
+    } catch {
+      setUnread([]);
+      setReadNotReplied([]);
+      setReplied([]);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  async function handleDelete(id: number) {
+    const res = await fetch(`/api/messages/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "فشل الحذف");
+    }
+  }
 
   if (loading) {
     return (
@@ -132,16 +172,22 @@ export default function MailTracking() {
         title="رسائل لم يتم الاطلاع عليها"
         messages={unread}
         isOld={isOlderThanThreeDays}
+        onDelete={handleDelete}
+        onRefresh={fetchData}
       />
       <MessageTable
         title="رسائل تم الاطلاع عليها ولم يتم الرد"
         messages={readNotReplied}
         isOld={isOlderThanThreeDays}
+        onDelete={handleDelete}
+        onRefresh={fetchData}
       />
       <MessageTable
         title="رسائل تم الرد عليها"
         messages={replied}
         isOld={() => false}
+        onDelete={handleDelete}
+        onRefresh={fetchData}
       />
     </div>
   );
