@@ -12,6 +12,7 @@ export interface UserPayload {
   role: string;
   departmentId?: number;
   sessionId?: string;
+  mustChangePassword?: boolean;
 }
 
 export async function createToken(payload: UserPayload): Promise<string> {
@@ -39,9 +40,10 @@ export async function getSession(): Promise<UserPayload | null> {
   const { prisma } = await import("@/lib/prisma");
   const user = await prisma.user.findUnique({
     where: { id: payload.id },
+    select: { sessionId: true, mustChangePassword: true },
   });
   if (!user || user.sessionId !== payload.sessionId) return null;
-  return payload;
+  return { ...payload, mustChangePassword: user.mustChangePassword ?? false };
 }
 
 export function getRoleLabel(role: string): string {

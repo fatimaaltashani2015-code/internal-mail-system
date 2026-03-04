@@ -28,6 +28,7 @@ function getNavItems(role: string) {
       { href: "/dashboard/departments", label: "إدارة الأقسام" },
       { href: "/dashboard/users", label: "إدارة المستخدمين" },
       { href: "/dashboard/reports", label: "التقارير والإحصائيات" },
+      { href: "/dashboard/backup", label: "النسخ الاحتياطي" },
     ];
   }
   return [];
@@ -44,16 +45,18 @@ export default async function DashboardLayout({
   const navItems = getNavItems(session.role);
   const roleLabel = getRoleLabel(session.role);
 
+  const showNav = !session.mustChangePassword;
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <DashboardHeader userName={session.name} roleLabel={roleLabel} />
+      <DashboardHeader userName={session.name} roleLabel={roleLabel} hideNav={!showNav} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {navItems.length > 0 && (
+        {showNav && navItems.length > 0 && (
           <div className="mb-6">
             <NavLinks items={navItems} />
           </div>
         )}
-        <ReferentialSection />
+        {showNav && <ReferentialSection />}
         <main>{children}</main>
       </div>
     </div>

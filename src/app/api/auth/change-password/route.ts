@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getSession } from "@/lib/auth";
+import { getSession, createToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -56,17 +56,49 @@ export async function PUT(request: NextRequest) {
     );
   }
 
+  const sameAsOld = await bcrypt.compare(newPassword, user.password);
+  if (sameAsOld) {
+    return NextResponse.json(
+      { error: "كلمة المرور الجديدة يجب أن تختلف عن الحالية" },
+      { status: 400 }
+    );
+  }
+
   const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const wasForced = user.mustChangePassword ?? false;
   await prisma.user.update({
     where: { id: session.id },
-    data: { password: hashedPassword, sessionId: null },
+    data: {
+      password: hashedPassword,
+      mustChangePassword: false,
+      ...(wasForced ? {} : { sessionId: null }),
+    },
   });
 
-  const response = NextResponse.json({ success: true });
-  response.cookies.set("auth-token", "", {
-    httpOnly: true,
-    maxAge: 0,
-    path: "/",
-  });
+  const response = NextResponse.json({ success: true, wasForced });
+  if (wasForced) {
+    const newToken = await createToken({
+      id: session.id,
+      employeeId: session.employeeId,
+      name: session.name,
+      role: session.role,
+      departmentId: session.departmentId,
+      sessionId: session.sessionId,
+      mustChangePassword: false,
+    });
+    response.cookies.set("auth-token", newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 8,
+      path: "/",
+    });
+  } else {
+    response.cookies.set("auth-token", "", {
+      httpOnly: true,
+      maxAge: 0,
+      path: "/",
+    });
+  }
   return response;
 }

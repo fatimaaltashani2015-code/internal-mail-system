@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 interface DashboardHeaderProps {
   userName: string;
   roleLabel: string;
+  hideNav?: boolean;
 }
 
-export default function DashboardHeader({ userName, roleLabel }: DashboardHeaderProps) {
+export default function DashboardHeader({ userName, roleLabel, hideNav }: DashboardHeaderProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -28,12 +29,14 @@ export default function DashboardHeader({ userName, roleLabel }: DashboardHeader
               <p className="font-medium text-slate-800">{userName}</p>
               <p className="text-sm text-slate-500">{roleLabel}</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="btn-secondary text-sm py-2"
-            >
-              تسجيل الخروج
-            </button>
+            {!hideNav && (
+              <button
+                onClick={handleLogout}
+                className="btn-secondary text-sm py-2"
+              >
+                تسجيل الخروج
+              </button>
+            )}
           </div>
         </div>
       </div>

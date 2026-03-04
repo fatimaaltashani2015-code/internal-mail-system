@@ -20,7 +20,11 @@ export async function PUT(
   if (name?.trim()) data.name = name.trim();
   if (departmentId !== undefined) data.departmentId = departmentId ? parseInt(departmentId) : null;
   if (role) data.role = role;
-  if (password) data.password = await bcrypt.hash(password, 10);
+  if (password) {
+    data.password = await bcrypt.hash(password, 10);
+    data.mustChangePassword = true;
+    data.sessionId = null;
+  }
 
   const user = await prisma.user.update({
     where: { id: parseInt(id) },

@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
       data: { sessionId },
     });
 
+    const mustChangePassword = user.mustChangePassword ?? false;
+
     const token = await createToken({
       id: user.id,
       employeeId: user.employeeId,
@@ -49,10 +51,12 @@ export async function POST(request: NextRequest) {
       role: user.role,
       departmentId: user.departmentId ?? undefined,
       sessionId,
+      mustChangePassword,
     });
 
     const response = NextResponse.json({
       success: true,
+      mustChangePassword,
       user: {
         id: user.id,
         employeeId: user.employeeId,

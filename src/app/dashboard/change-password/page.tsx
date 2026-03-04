@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 export default function ChangePasswordPage() {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((user) => {
         if (user?.role === "admin") router.replace("/dashboard");
+        setMustChangePassword(user?.mustChangePassword ?? false);
       })
       .catch(() => router.replace("/login"))
       .finally(() => setChecking(false));
@@ -49,7 +51,11 @@ export default function ChangePasswordPage() {
         return;
       }
 
-      router.push("/login");
+      if (data.wasForced) {
+        router.push("/dashboard");
+      } else {
+        router.push("/login");
+      }
       router.refresh();
     } catch {
       setError("حدث خطأ في الاتصال");
@@ -69,6 +75,11 @@ export default function ChangePasswordPage() {
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm max-w-md">
       <h2 className="text-2xl font-bold text-slate-800 mb-6">تغيير كلمة المرور</h2>
+      {mustChangePassword && (
+        <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-sm mb-6">
+          تم تغيير كلمة المرور من قبل مدير النظام. يجب تغيير كلمة المرور الآن قبل المتابعة.
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{error}</div>

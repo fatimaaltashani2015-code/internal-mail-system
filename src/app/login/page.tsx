@@ -21,7 +21,10 @@ export default function LoginPage() {
         return null;
       })
       .then((user) => {
-        if (user?.id) router.replace("/dashboard");
+        if (user?.id) {
+          if (user.mustChangePassword) router.replace("/dashboard/change-password");
+          else router.replace("/dashboard");
+        }
       })
       .catch(() => {})
       .finally(() => setChecking(false));
@@ -43,7 +46,11 @@ export default function LoginPage() {
         setError(data.error || "حدث خطأ أثناء تسجيل الدخول");
         return;
       }
-      router.push("/dashboard");
+      if (data.mustChangePassword) {
+        router.push("/dashboard/change-password");
+      } else {
+        router.push("/dashboard");
+      }
       router.refresh();
     } catch {
       setError("حدث خطأ في الاتصال");
